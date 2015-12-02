@@ -9,7 +9,7 @@ try:
 except ImportError:
     from django.contrib.contenttypes.generic import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
-from django.forms.models import BaseInlineFormSet
+from django.forms.models import BaseInlineFormSet, BaseModelFormSet
 
 try:
     # Django 1.6
@@ -20,6 +20,44 @@ except ImportError:
 
 
 class NestedInlineFormSetMixin(object):
+
+    parent_fk_name = None
+    fk = None
+
+    def __init__(self, data=None, files=None, instance=None,
+                 save_as_new=False, prefix=None, queryset=None, **kwargs):
+        if self.parent_fk_name:
+            if instance is None:
+                self.instance = self.fk.model()
+            else:
+                self.instance = instance
+
+            self.save_as_new = save_as_new
+            if self.instance.id:
+                object = getattr(instance, self.parent_fk_name)
+                if object and object.id:
+                    qs = self.model.objects.filter(pk=object.id)
+                else:
+                    qs = self.model.objects.none()
+            else:
+                qs = self.model.objects.none()
+                self.extra = 1
+            BaseModelFormSet.__init__(self, data, files, prefix=prefix,
+                                      queryset=qs, **kwargs)
+        else:
+            BaseInlineFormSet.__init__(self,
+                data=data,
+                files=files,
+                instance=instance,
+                save_as_new=save_as_new, prefix=prefix, queryset=queryset, **kwargs)
+
+    @classmethod
+    def get_default_prefix(cls):
+        if cls.parent_fk_name:
+            return cls.parent_fk_name
+        else:
+            return cls.fk.remote_field.get_accessor_name(model=cls.model).replace('+', '')
+
 
     def save(self, commit=True):
         """
@@ -180,6 +218,7 @@ class NestedInlineFormSetMixin(object):
         This patch fixes this problem.
         """
         form = super(NestedInlineFormSetMixin, self)._construct_form(i, **kwargs)
+
         pk_value = form.data.get(form.add_prefix(self._pk_field.name))
         if pk_value == '':
             pk_value = None
@@ -191,6 +230,9 @@ class NestedInlineFormSetMixin(object):
                 pass
             else:
                 setattr(form.instance, self.fk.get_attname(), self.instance.pk)
+
+        if self.parent_fk_name in form.fields:
+            del form.fields[self.parent_fk_name]
         return form
 
     def save_existing_objects(self, initial_forms=None, commit=True):

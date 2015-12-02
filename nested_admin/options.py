@@ -5,10 +5,10 @@ ModelAdmin add_view and change_view easier. Any functional differences from
 that module should be considered a bug.
 """
 from six.moves import zip
-
 import django
 from django.forms.formsets import all_valid
 from django.contrib.admin import helpers
+
 try:
     from django.contrib.admin.utils import unquote
 except ImportError:
@@ -46,11 +46,9 @@ try:
 except ImportError:
     TemplateResponse = None
 
-
 transaction_wrap = getattr(transaction, 'atomic', None)
 if not transaction_wrap:
     transaction_wrap = transaction.commit_on_success
-
 
 IS_POPUP_VAR = '_popup'
 
@@ -90,7 +88,6 @@ def all_valid_with_nesting(formsets):
 
 
 class BaseModelAdminMixin(object):
-
     def inline_has_permissions(self, request, inline):
         has_add_perms = has_change_perms = has_delete_perms = True
         if hasattr(inline, 'has_add_permission'):
@@ -104,8 +101,15 @@ class BaseModelAdminMixin(object):
             inline.max_num = 0
         return has_perms
 
+    def get_inlines(self, request, obj=None):
+        """
+        Can be overrided
+        """
+        inlines = getattr(self, 'inlines', [])
+        return inlines
+
     def get_inline_instances(self, request, obj=None):
-        for inline_class in getattr(self, 'inlines', []):
+        for inline_class in self.get_inlines(request, obj):
             inline = inline_class(self.model, self.admin_site)
             if request:
                 if not self.inline_has_permissions(request, inline):
@@ -134,7 +138,8 @@ class ModelAdmin(BaseModelAdminMixin, _ModelAdmin):
         """Use the content type from the proxy model."""
         from django.contrib.contenttypes.models import ContentType
 
-        templateresp = super(ModelAdmin, self).render_change_form(request, context, add=add, change=change, form_url=form_url, obj=obj)
+        templateresp = super(ModelAdmin, self).render_change_form(request, context, add=add, change=change,
+                                                                  form_url=form_url, obj=obj)
         try:
             content_type_id = ContentType.objects.get_for_model(self.model, False).id
         except TypeError:
@@ -236,7 +241,7 @@ class ModelAdmin(BaseModelAdminMixin, _ModelAdmin):
             fieldsets = list(inline.get_fieldsets(request, obj))
             readonly = list(inline.get_readonly_fields(request, obj))
             inline_admin_formset = helpers.InlineAdminFormSet(inline, formset,
-                fieldsets, readonly_fields=readonly, model_admin=self)
+                                                              fieldsets, readonly_fields=readonly, model_admin=self)
             yield inline_admin_formset
 
     @csrf_protect_m
@@ -275,8 +280,8 @@ class ModelAdmin(BaseModelAdminMixin, _ModelAdmin):
             prepopulated_fields = self.prepopulated_fields
 
         adminForm = helpers.AdminForm(form, self.get_fieldsets(request),
-            prepopulated_fields, self.get_readonly_fields(request),
-            model_admin=self)
+                                      prepopulated_fields, self.get_readonly_fields(request),
+                                      model_admin=self)
         media = self.media + adminForm.media
 
         inline_admin_formsets = []
@@ -318,7 +323,7 @@ class ModelAdmin(BaseModelAdminMixin, _ModelAdmin):
 
         if obj is None:
             raise Http404(_('%(name)s object with primary key %(key)r does not exist.') \
-                % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
+                          % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
 
         if request.method == 'POST' and '_saveasnew' in request.POST:
             return self.add_view(request, form_url='../add/')
@@ -349,8 +354,8 @@ class ModelAdmin(BaseModelAdminMixin, _ModelAdmin):
             prepopulated_fields = self.prepopulated_fields
 
         adminForm = helpers.AdminForm(form, self.get_fieldsets(request, obj),
-            prepopulated_fields, self.get_readonly_fields(request, obj),
-            model_admin=self)
+                                      prepopulated_fields, self.get_readonly_fields(request, obj),
+                                      model_admin=self)
         media = self.media + adminForm.media
 
         inline_admin_formsets = []
@@ -394,7 +399,6 @@ class StackedInline(InlineModelAdmin):
 
 
 class TabularInline(InlineModelAdmin):
-
     template = 'admin/edit_inline/tabular.html'
 
 

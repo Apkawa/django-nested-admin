@@ -24,6 +24,7 @@ class NestedInlineAdminFormset(helpers.InlineAdminFormSet):
         # instances in the form.
         self.inlines = self._get_nested_inlines(self.formset.add_prefix('empty'))
 
+
     def _get_nested_inlines(self, prefix, obj=None):
         nested_inline_formsets = []
         if not hasattr(self.opts, 'get_inline_instances'):
@@ -67,7 +68,6 @@ class NestedInlineAdminFormset(helpers.InlineAdminFormSet):
 
 
 class NestedAdminMixin(object):
-
     def get_formset_instances(self, request, instance, is_new=False, **kwargs):
         obj = None
         if not is_new:
