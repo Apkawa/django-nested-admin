@@ -56,7 +56,10 @@ class NestedInlineFormSetMixin(object):
         if cls.parent_fk_name:
             return cls.parent_fk_name
         else:
-            return cls.fk.remote_field.get_accessor_name(model=cls.model).replace('+', '')
+
+            return cls.fk.related.get_accessor_name(model=cls.model).replace('+', '')
+            # 1.9
+            # return cls.fk.remote_field.get_accessor_name(model=cls.model).replace('+', '')
 
 
     def save(self, commit=True):
